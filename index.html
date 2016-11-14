@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <link href='https://fonts.googleapis.com/css?family=Chivo:900' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-dark.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <title>Replicator by mysql-time-machine</title>
+  </head>
+
+  <body>
+    <div id="container">
+      <div class="inner">
+
+        <header>
+          <h1>Replicator</h1>
+          <h2>MySQL to HBase replicator. Mirrors MySQL tables in HBase, keeping the data changes history.</h2>
+        </header>
+
+        <section id="downloads" class="clearfix">
+          <a href="https://github.com/mysql-time-machine/replicator/zipball/master" id="download-zip" class="button"><span>Download .zip</span></a>
+          <a href="https://github.com/mysql-time-machine/replicator/tarball/master" id="download-tar-gz" class="button"><span>Download .tar.gz</span></a>
+          <a href="https://github.com/mysql-time-machine/replicator" id="view-on-github" class="button"><span>View on GitHub</span></a>
+        </section>
+
+        <hr>
+
+        <section id="main_content">
+          <h2>
+<a id="replicator" class="anchor" href="#replicator" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Replicator</h2>
+
+<p>Replicates data changes from MySQL binlog to HBase or Kafka. In case of HBase, preserves the previous data versions. HBase storage is intended for auditing purposes of historical data. In addition, special daily-changes tables can be maintained in HBase, which are convenient for fast and cheap imports from HBase to Hive. Replication to Kafka is intended for easy real-time access to a stream of data changes.</p>
+
+<h3>
+<a id="usage" class="anchor" href="#usage" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Usage</h3>
+
+<h4>
+<a id="replicate-initial-binlog-snapshot-to-hbase" class="anchor" href="#replicate-initial-binlog-snapshot-to-hbase" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Replicate initial binlog snapshot to HBase</h4>
+
+<pre><code>java -jar hbrepl-0.13.2.jar \
+    --hbase-namespace $hbase-namespace \
+    --applier hbase --schema $schema \
+    --binlog-filename $first-binlog-filename \
+    --config-path $config-path \
+    --initial-snapshot
+</code></pre>
+
+<h4>
+<a id="replication-to-hbase-after-initial-snapshot" class="anchor" href="#replication-to-hbase-after-initial-snapshot" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Replication to HBase after initial snapshot</h4>
+
+<pre><code>java -jar hbrepl-0.13.2.jar \
+    --hbase-namespace $hbase-namespace \
+    --applier hbase \
+    --schema $schema \
+    --binlog-filename $binlog-filename \
+    --config-path $config-path  \
+    [--delta]
+</code></pre>
+
+<h4>
+<a id="replication-to-kafka" class="anchor" href="#replication-to-kafka" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Replication to Kafka</h4>
+
+<pre><code>java -jar hbrepl-0.13.2.jar \
+    --applier kafka \
+    --schema $schema \
+    --binlog-filename $binlog-filename \
+    --config-path $config-path
+</code></pre>
+
+<h4>
+<a id="replicate-range-of-binlog-files-and-output-db-events-as-json-to-stdout" class="anchor" href="#replicate-range-of-binlog-files-and-output-db-events-as-json-to-stdout" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Replicate range of binlog files and output db events as JSON to STDOUT</h4>
+
+<pre><code>java -jar hbrepl-0.13.2.jar \
+    --applier STDOUT \
+    --schema $schema \
+    --binlog-filename $binlog-filename \
+    --last-binlog-filename $last-binlog-filename-to-process \
+    --config-path $config-path
+</code></pre>
+
+<h4>
+<a id="configuration-file-structure" class="anchor" href="#configuration-file-structure" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Configuration file structure</h4>
+
+<pre><code>replication_schema:
+    name:      'replicated_schema_name'
+    username:  'user'
+    password:  'pass'
+    host_pool: ['localhost']
+metadata_store:
+    username: 'user'
+    password: 'pass'
+    host:     'active_schema_host'
+    database: 'active_schema_database'
+    # The following are options for storing replicator metadata, only one should be used (zookeeper or file)
+    zookeeper:
+        quorum: ['zk-host1', 'zk-host2']
+        path: '/path/in/zookeeper'
+    file:
+        path: '/path/on/disk'
+hbase:
+    namespace: 'schema_namespace'
+    zookeeper_quorum:  ['hbase-zk1-host', 'hbase-zkN-host']
+    hive_imports:
+        tables: ['sometable']
+mysql_failover:
+    pgtid:
+        p_gtid_pattern: $regex_pattern_to_extract_pgtid
+        p_gtid_prefix: $prefix_to_add_to_pgtid_query_used_in_orchestrator_url
+    orchestrator:
+        username: orchestrator-user-name
+        password: orchestrator-password
+        url:      http://orchestrator-host/api
+metrics:
+    frequency: 10 seconds
+    reporters:
+      graphite:
+        namespace: 'graphite.namespace.prefix'
+        url: 'graphite_host[:&lt;graphite_port (default is 3002)&gt;]'
+# Optionally you can specify a console reporter for ease of testing
+#      console:
+#        timeZone: UTC
+#        output: stdout
+</code></pre>
+
+<h3>
+<a id="license" class="anchor" href="#license" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>LICENSE</h3>
+
+<p>Copyright 2016 Bosko Devetak</p>
+
+<p>Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at</p>
+
+<pre><code>   http://www.apache.org/licenses/LICENSE-2.0
+</code></pre>
+
+<p>Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.</p>
+        </section>
+
+        <footer>
+          Replicator is maintained by <a href="https://github.com/mysql-time-machine">mysql-time-machine</a><br>
+          This page was generated by <a href="https://pages.github.com">GitHub Pages</a>. Tactile theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.
+        </footer>
+
+        
+      </div>
+    </div>
+  </body>
+</html>
